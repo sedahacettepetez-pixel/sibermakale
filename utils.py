@@ -1,0 +1,486 @@
+"""
+Utility functions for UNSW-NB15 Attack Classification Project
+"""
+
+import os
+import json
+import time
+import hashlib
+import warnings
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional, Union, Any
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import (
+    classification_report, confusion_matrix,
+    precision_recall_curve, roc_curve, auc,
+    average_precision_score, roc_auc_score,
+    brier_score_loss
+)
+from sklearn.preprocessing import label_binarize
+
+warnings.filterwarnings('ignore')
+
+# Set style
+sns.set_style("whitegrid")
+plt.rcParams['figure.figsize'] = (10, 6)
+plt.rcParams['figure.dpi'] = 100
+
+
+def load_config(config_path: str = "config.json") -> Dict:
+    """Load configuration from JSON file."""
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    return config
+
+
+def save_config_snapshot(config: Dict, output_path: str):
+    """Save configuration snapshot to JSON file."""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w') as f:
+        json.dump(config, f, indent=2)
+    print(f"✓ Configuration snapshot saved to {output_path}")
+
+
+def ensure_directories(config: Dict):
+    """Ensure all required directories exist."""
+    dirs = [
+        config['output']['artifacts_dir'],
+        config['output']['tables_dir'],
+        config['output']['figs_dir'],
+        config['output']['logs_dir'],
+        config['output']['models_dir'],
+        config['output']['report_dir'],
+        os.path.join(config['output']['report_dir'], 'tables_latex'),
+        os.path.dirname(config['data']['processed_path'])
+    ]
+    for dir_path in dirs:
+        os.makedirs(dir_path, exist_ok=True)
+    print(f"✓ All directories verified")
+
+
+def compute_md5(file_path: str) -> str:
+    """Compute MD5 hash of a file."""
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
+def create_data_inventory(file_paths: List[str], output_path: str):
+    """Create data inventory table."""
+    inventory = []
+    for file_path in file_paths:
+        if os.path.exists(file_path):
+            start_time = time.time()
+            df = pd.read_csv(file_path)
+            load_time = time.time() - start_time
+
+            inventory.append({
+                'file_name': os.path.basename(file_path),
+                'file_size_bytes': os.path.getsize(file_path),
+                'n_rows': len(df),
+                'n_cols': len(df.columns),
+                'md5': compute_md5(file_path),
+                'load_time_sec': round(load_time, 2)
+            })
+
+    inventory_df = pd.DataFrame(inventory)
+    inventory_df.to_csv(output_path, index=False)
+    print(f"✓ Data inventory saved to {output_path}")
+    return inventory_df
+
+
+def create_eda_overview(df: pd.DataFrame, config: Dict, output_path: str):
+    """Create EDA overview table."""
+    overview = []
+
+    categorical_cols = config['features']['categorical']
+    numeric_cols = config['features']['numeric']
+    id_time_cols = config['features']['id_time']
+    target_cols = [config['targets']['binary'], config['targets']['multi']]
+
+    for col in df.columns:
+        if col in target_cols:
+            role = 'target'
+        elif col in categorical_cols:
+            role = 'categorical'
+        elif col in numeric_cols:
+            role = 'numeric'
+        elif col in id_time_cols:
+            role = 'id_time'
+        else:
+            role = 'other'
+
+        n_unique = df[col].nunique()
+        n_missing = df[col].isna().sum()
+        missing_pct = round(n_missing / len(df) * 100, 2)
+        sample_values = df[col].dropna().head(3).tolist()
+
+        overview.append({
+            'column': col,
+            'dtype': str(df[col].dtype),
+            'role': role,
+            'n_unique': n_unique,
+            'n_missing': n_missing,
+            'missing_pct': missing_pct,
+            'sample_values': str(sample_values)
+        })
+
+    overview_df = pd.DataFrame(overview)
+    overview_df.to_csv(output_path, index=False)
+    print(f"✓ EDA overview saved to {output_path}")
+    return overview_df
+
+
+def create_numeric_summary(df: pd.DataFrame, numeric_cols: List[str], output_path: str):
+    """Create summary statistics for numeric columns."""
+    summary = []
+
+    for col in numeric_cols:
+        if col in df.columns:
+            col_data = df[col]
+            summary.append({
+                'column': col,
+                'count': col_data.count(),
+                'mean': col_data.mean(),
+                'std': col_data.std(),
+                'min': col_data.min(),
+                'q1': col_data.quantile(0.25),
+                'median': col_data.median(),
+                'q3': col_data.quantile(0.75),
+                'max': col_data.max(),
+                'n_missing': col_data.isna().sum(),
+                'missing_pct': round(col_data.isna().sum() / len(df) * 100, 2)
+            })
+
+    summary_df = pd.DataFrame(summary)
+    summary_df.to_csv(output_path, index=False)
+    print(f"✓ Numeric summary saved to {output_path}")
+    return summary_df
+
+
+def create_categorical_summary(df: pd.DataFrame, categorical_cols: List[str], output_path: str):
+    """Create summary statistics for categorical columns."""
+    summary = []
+
+    for col in categorical_cols:
+        if col in df.columns:
+            col_data = df[col]
+            value_counts = col_data.value_counts()
+
+            if len(value_counts) > 0:
+                top_val = value_counts.index[0]
+                top_freq = value_counts.iloc[0]
+                top_pct = round(top_freq / len(df) * 100, 2)
+            else:
+                top_val = None
+                top_freq = 0
+                top_pct = 0.0
+
+            summary.append({
+                'column': col,
+                'n_unique': col_data.nunique(),
+                'top': top_val,
+                'top_freq': top_freq,
+                'top_pct': top_pct,
+                'n_missing': col_data.isna().sum(),
+                'missing_pct': round(col_data.isna().sum() / len(df) * 100, 2)
+            })
+
+    summary_df = pd.DataFrame(summary)
+    summary_df.to_csv(output_path, index=False)
+    print(f"✓ Categorical summary saved to {output_path}")
+    return summary_df
+
+
+def create_target_distribution(df: pd.DataFrame, target_col: str, split_col: str,
+                                output_path: str, is_binary: bool = False):
+    """Create target distribution table."""
+    distributions = []
+
+    # Overall distribution
+    overall_dist = df[target_col].value_counts()
+    for label, count in overall_dist.items():
+        distributions.append({
+            'split': 'all',
+            target_col: label,
+            'count': count,
+            'pct': round(count / len(df) * 100, 2)
+        })
+
+    # Per-split distribution
+    if split_col in df.columns:
+        for split_val in df[split_col].unique():
+            split_df = df[df[split_col] == split_val]
+            split_dist = split_df[target_col].value_counts()
+            for label, count in split_dist.items():
+                distributions.append({
+                    'split': split_val,
+                    target_col: label,
+                    'count': count,
+                    'pct': round(count / len(split_df) * 100, 2)
+                })
+
+    dist_df = pd.DataFrame(distributions)
+    dist_df.to_csv(output_path, index=False)
+    print(f"✓ Target distribution saved to {output_path}")
+    return dist_df
+
+
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray,
+                    y_proba: Optional[np.ndarray] = None,
+                    class_names: Optional[List[str]] = None) -> Dict:
+    """Compute comprehensive classification metrics."""
+    metrics = {}
+
+    # Basic metrics from classification report
+    report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
+
+    metrics['accuracy'] = report['accuracy']
+    metrics['macro_f1'] = report['macro avg']['f1-score']
+    metrics['weighted_f1'] = report['weighted avg']['f1-score']
+    metrics['macro_precision'] = report['macro avg']['precision']
+    metrics['macro_recall'] = report['macro avg']['recall']
+
+    # PR-AUC (OVR)
+    if y_proba is not None and len(y_proba.shape) > 1:
+        n_classes = y_proba.shape[1]
+        y_true_bin = label_binarize(y_true, classes=range(n_classes))
+
+        # Compute average precision for each class
+        pr_aucs = []
+        for i in range(n_classes):
+            if len(np.unique(y_true_bin[:, i])) > 1:
+                pr_auc = average_precision_score(y_true_bin[:, i], y_proba[:, i])
+                pr_aucs.append(pr_auc)
+
+        metrics['ovr_pr_auc'] = np.mean(pr_aucs) if pr_aucs else 0.0
+
+        # Brier score (calibration)
+        brier_scores = []
+        for i in range(n_classes):
+            if len(np.unique(y_true_bin[:, i])) > 1:
+                brier = brier_score_loss(y_true_bin[:, i], y_proba[:, i])
+                brier_scores.append(brier)
+        metrics['brier_score'] = np.mean(brier_scores) if brier_scores else 0.0
+
+    return metrics
+
+
+def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray,
+                          class_names: List[str], output_path: str,
+                          title: str = "Confusion Matrix"):
+    """Plot and save confusion matrix."""
+    cm = confusion_matrix(y_true, y_pred)
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=class_names, yticklabels=class_names)
+    plt.title(title)
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Confusion matrix saved to {output_path}")
+
+
+def plot_pr_curves(y_true: np.ndarray, y_proba: np.ndarray,
+                   class_names: List[str], output_path: str,
+                   title: str = "Precision-Recall Curves (OVR)"):
+    """Plot and save PR curves for multi-class (OVR)."""
+    n_classes = len(class_names)
+    y_true_bin = label_binarize(y_true, classes=range(n_classes))
+
+    plt.figure(figsize=(12, 8))
+
+    for i in range(n_classes):
+        if len(np.unique(y_true_bin[:, i])) > 1:
+            precision, recall, _ = precision_recall_curve(y_true_bin[:, i], y_proba[:, i])
+            pr_auc = average_precision_score(y_true_bin[:, i], y_proba[:, i])
+            plt.plot(recall, precision, label=f'{class_names[i]} (AP={pr_auc:.3f})')
+
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title(title)
+    plt.legend(loc='best')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ PR curves saved to {output_path}")
+
+
+def plot_roc_curves(y_true: np.ndarray, y_proba: np.ndarray,
+                    class_names: List[str], output_path: str,
+                    title: str = "ROC Curves (OVR)"):
+    """Plot and save ROC curves for multi-class (OVR)."""
+    n_classes = len(class_names)
+    y_true_bin = label_binarize(y_true, classes=range(n_classes))
+
+    plt.figure(figsize=(12, 8))
+
+    for i in range(n_classes):
+        if len(np.unique(y_true_bin[:, i])) > 1:
+            fpr, tpr, _ = roc_curve(y_true_bin[:, i], y_proba[:, i])
+            roc_auc = auc(fpr, tpr)
+            plt.plot(fpr, tpr, label=f'{class_names[i]} (AUC={roc_auc:.3f})')
+
+    plt.plot([0, 1], [0, 1], 'k--', label='Random')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(title)
+    plt.legend(loc='best')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ ROC curves saved to {output_path}")
+
+
+def plot_calibration_curve(y_true: np.ndarray, y_proba: np.ndarray,
+                           class_names: List[str], output_path: str,
+                           n_bins: int = 10, title: str = "Calibration Plot"):
+    """Plot calibration (reliability) diagram."""
+    from sklearn.calibration import calibration_curve
+
+    n_classes = len(class_names)
+    y_true_bin = label_binarize(y_true, classes=range(n_classes))
+
+    plt.figure(figsize=(10, 8))
+
+    for i in range(min(n_classes, 5)):  # Plot max 5 classes
+        if len(np.unique(y_true_bin[:, i])) > 1:
+            prob_true, prob_pred = calibration_curve(
+                y_true_bin[:, i], y_proba[:, i], n_bins=n_bins, strategy='uniform'
+            )
+            plt.plot(prob_pred, prob_true, marker='o', label=class_names[i])
+
+    plt.plot([0, 1], [0, 1], 'k--', label='Perfectly calibrated')
+    plt.xlabel('Mean Predicted Probability')
+    plt.ylabel('Fraction of Positives')
+    plt.title(title)
+    plt.legend(loc='best')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Calibration curve saved to {output_path}")
+
+
+def create_feature_catalog(features: Dict, output_path: str):
+    """Create feature catalog table."""
+    catalog = []
+
+    # Raw categorical features
+    for feat in features.get('categorical', []):
+        catalog.append({
+            'feature': feat,
+            'source': 'raw',
+            'dtype': 'categorical',
+            'description': f'Raw categorical feature: {feat}',
+            'created_by': 'original_data'
+        })
+
+    # Raw numeric features
+    for feat in features.get('numeric', []):
+        catalog.append({
+            'feature': feat,
+            'source': 'raw',
+            'dtype': 'numeric',
+            'description': f'Raw numeric feature: {feat}',
+            'created_by': 'original_data'
+        })
+
+    # Engineered features
+    for feat, desc in features.get('engineered', {}).items():
+        catalog.append({
+            'feature': feat,
+            'source': 'engineered',
+            'dtype': 'mixed',
+            'description': desc,
+            'created_by': 'feature_engineering'
+        })
+
+    catalog_df = pd.DataFrame(catalog)
+    catalog_df.to_csv(output_path, index=False)
+    print(f"✓ Feature catalog saved to {output_path}")
+    return catalog_df
+
+
+def find_optimal_threshold(y_true: np.ndarray, y_proba: np.ndarray,
+                           metric: str = 'f1') -> float:
+    """Find optimal classification threshold based on metric."""
+    thresholds = np.linspace(0, 1, 101)
+    scores = []
+
+    for thresh in thresholds:
+        y_pred = (y_proba >= thresh).astype(int)
+
+        if metric == 'f1':
+            from sklearn.metrics import f1_score
+            score = f1_score(y_true, y_pred, average='macro', zero_division=0)
+        else:
+            raise ValueError(f"Unknown metric: {metric}")
+
+        scores.append(score)
+
+    optimal_idx = np.argmax(scores)
+    optimal_threshold = thresholds[optimal_idx]
+
+    return optimal_threshold
+
+
+def create_reproducibility_manifest(output_path: str):
+    """Create reproducibility manifest with package versions."""
+    import sys
+    import sklearn
+    import lightgbm
+    import xgboost
+
+    manifest = [
+        {'component': 'python', 'version_or_value': sys.version.split()[0], 'notes': 'Python version'},
+        {'component': 'pandas', 'version_or_value': pd.__version__, 'notes': 'Data manipulation'},
+        {'component': 'numpy', 'version_or_value': np.__version__, 'notes': 'Numerical computing'},
+        {'component': 'scikit-learn', 'version_or_value': sklearn.__version__, 'notes': 'ML library'},
+        {'component': 'lightgbm', 'version_or_value': lightgbm.__version__, 'notes': 'Gradient boosting'},
+        {'component': 'xgboost', 'version_or_value': xgboost.__version__, 'notes': 'Gradient boosting'},
+        {'component': 'random_seed', 'version_or_value': '42', 'notes': 'Global random seed'},
+    ]
+
+    try:
+        import torch
+        manifest.append({'component': 'pytorch', 'version_or_value': torch.__version__, 'notes': 'Deep learning'})
+    except:
+        pass
+
+    try:
+        import catboost
+        manifest.append({'component': 'catboost', 'version_or_value': catboost.__version__, 'notes': 'Gradient boosting'})
+    except:
+        pass
+
+    manifest_df = pd.DataFrame(manifest)
+    manifest_df.to_csv(output_path, index=False)
+    print(f"✓ Reproducibility manifest saved to {output_path}")
+    return manifest_df
+
+
+def timer(func):
+    """Decorator to time function execution."""
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        print(f"⏱ {func.__name__} took {end - start:.2f} seconds")
+        return result
+    return wrapper
+
+
+if __name__ == "__main__":
+    print("Utility functions module loaded successfully")
