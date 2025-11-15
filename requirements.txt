@@ -16,8 +16,12 @@ catboost>=1.2.0
 torch>=2.0.0
 torchvision>=0.15.0
 
+# Tabular Deep Learning
+pytorch-tabnet>=4.0
+
 # Hyperparameter Optimization
 optuna>=3.3.0
+optuna-integration>=3.3.0
 
 # Data I/O
 pyarrow>=12.0.0
