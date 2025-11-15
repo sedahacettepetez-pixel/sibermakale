@@ -42,12 +42,15 @@ scikit-plot>=0.3.7
 # SHAP (optional for explainability)
 shap>=0.42.0
 
+# LIME (for local explanations)
+lime>=0.2.0
+
 # Network Analysis (optional)
 networkx>=3.1
+
+# Document Generation
+python-docx>=0.8.11
 
 # Utils
 python-dotenv>=1.0.0
 pyyaml>=6.0
-
-# Kaggle API (for data download)
-kaggle>=1.5.16

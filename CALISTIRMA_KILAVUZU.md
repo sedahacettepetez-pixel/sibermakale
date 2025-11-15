@@ -4,21 +4,23 @@
 1. [Google Colab ile Çalıştırma](#-google-colab-ile-çalıştırma)
 2. [Masaüstü Kurulum (Windows)](#-masaüstü-kurulum-windows)
 3. [Masaüstü Kurulum (macOS/Linux)](#-masaüstü-kurulum-macoslinux)
-4. [Projeyi İndirme ve Çalıştırma](#-projeyi-indirme-ve-çalıştırma)
+4. [Veri Setini İndirme](#-veri-setini-indirme)
 5. [Çıktıları Görüntüleme](#-çıktıları-görüntüleme)
 
 ---
 
 ## 🌐 Google Colab ile Çalıştırma
 
-### ⚡ TEK KOMUTLA KURULUM (EN KOLAY)
+### ⚡ 3 ADIMDA BAŞLANGIÇ
+
+**ADIM 1: Projeyi Kur**
 
 Google Colab'a gidin: **https://colab.research.google.com**
 
 Yeni bir hücre açıp şu kodu çalıştırın:
 
 ```python
-# ADIM 1: Projeyi klonla ve kur
+# Projeyi klonla ve kur
 !git clone -b claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a \
   https://github.com/sedahacettepetez-pixel/sibermakale.git
 %cd sibermakale
@@ -27,50 +29,55 @@ Yeni bir hücre açıp şu kodu çalıştırın:
 print("✅ Kurulum tamamlandı!")
 ```
 
-### 📊 ADIM 2: Veri Setini İndir
+**ADIM 2: Veri Setini Yükle**
 
 ```python
-# Kaggle token yükle (ilk kez)
 from google.colab import files
-print("📁 Lütfen kaggle.json dosyanızı yükleyin:")
+import os
+
+# data/ klasörü oluştur
+!mkdir -p data
+
+print("📁 Lütfen UNSW-NB15 CSV dosyalarını yükleyin:")
+print("  - UNSW_NB15_training-set.csv")
+print("  - UNSW_NB15_testing-set.csv")
+
 uploaded = files.upload()
 
-# Kaggle yapılandır
-!mkdir -p ~/.kaggle
-!cp kaggle.json ~/.kaggle/
-!chmod 600 ~/.kaggle/kaggle.json
+# Dosyaları data/ klasörüne taşı
+!mv *.csv data/
 
-# UNSW-NB15 veri setini indir
-!kaggle datasets download -d mrwellsdavid/unsw-nb15
-!unzip -q unsw-nb15.zip -d data/
+# Kontrol et
+!ls -lh data/
 
-print("✅ Veri seti hazır!")
+print("✅ Veri seti yüklendi!")
 ```
 
-### 🎯 ADIM 3: Notebook'u Çalıştır
+**ADIM 3: Analizi Başlat**
 
 ```python
-# Jupyter notebook'u aç
-from google.colab import drive
-drive.mount('/content/drive')
-
-# unsw_nb15_analysis.ipynb dosyasını Colab'da açın
-# File > Open notebook > GitHub sekmesi
+# Notebook'u GitHub'dan aç:
+# File > Open notebook > GitHub
 # URL: https://github.com/sedahacettepetez-pixel/sibermakale
 # Branch: claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a
 # Dosya: unsw_nb15_analysis.ipynb
+
+# Veya tüm hücreleri çalıştır:
+# Runtime > Run all
 ```
 
-### 📥 ADIM 4: Çıktıları İndir
+### 📥 Google Drive ile Veri Yükleme
 
 ```python
-# Tüm çıktıları ZIP olarak indir
-!zip -r unsw_nb15_outputs.zip artifacts/ -x "*.git*"
+from google.colab import drive
+drive.mount('/content/drive')
 
-from google.colab import files
-files.download('unsw_nb15_outputs.zip')
+# Drive'dan veri kopyala
+%cd /content/sibermakale
+!mkdir -p data
+!cp "/content/drive/MyDrive/UNSW-NB15/*.csv" data/
 
-print("✅ Çıktılar indirildi!")
+print("✅ Drive'dan veri yüklendi!")
 ```
 
 ---
@@ -87,14 +94,9 @@ print("✅ Çıktılar indirildi!")
    - İndir: https://git-scm.com/download/win
    - Varsayılan ayarlarla kur
 
-3. **Jupyter Notebook Kurulumu**
-   ```cmd
-   pip install jupyter notebook
-   ```
-
 ### ADIM 2: Projeyi İndir
 
-**PowerShell veya CMD açın** (Windows Tuşu + R → `cmd` → Enter)
+**PowerShell veya CMD açın:**
 
 ```cmd
 cd %USERPROFILE%\Desktop
@@ -102,7 +104,7 @@ git clone -b claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a https://gith
 cd sibermakale
 ```
 
-### ADIM 3: Sanal Ortam Oluştur ve Paketleri Yükle
+### ADIM 3: Sanal Ortam ve Paketler
 
 ```cmd
 python -m venv venv
@@ -112,24 +114,15 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### ADIM 4: Veri Setini İndir
+### ADIM 4: Veri Setini Ekle
 
-**Seçenek A: Kaggle ile (Otomatik)**
+1. UNSW-NB15 veri setini indirin (bkz. [Veri Setini İndirme](#-veri-setini-indirme))
+2. CSV dosyalarını `sibermakale\data\` klasörüne kopyalayın
+
 ```cmd
-pip install kaggle
-
-REM Kaggle token dosyanızı C:\Users\<KullanıcıAdı>\.kaggle\ klasörüne kopyalayın
-mkdir %USERPROFILE%\.kaggle
-REM kaggle.json dosyanızı bu klasöre kopyalayın
-
-kaggle datasets download -d mrwellsdavid/unsw-nb15
-tar -xf unsw-nb15.zip -C data\
+# Klasörü kontrol et
+dir data\
 ```
-
-**Seçenek B: Manuel İndirme**
-1. https://www.kaggle.com/datasets/mrwellsdavid/unsw-nb15 adresine git
-2. "Download" butonuna tıkla
-3. ZIP'i aç ve `data/` klasörüne kopyala
 
 ### ADIM 5: Notebook'u Başlat
 
@@ -137,7 +130,7 @@ tar -xf unsw-nb15.zip -C data\
 jupyter notebook unsw_nb15_analysis.ipynb
 ```
 
-Tarayıcıda otomatik açılacaktır. **Cell → Run All** ile tüm analizi başlatın.
+Tarayıcıda açılacaktır. **Cell → Run All** ile analizi başlatın.
 
 ---
 
@@ -145,25 +138,10 @@ Tarayıcıda otomatik açılacaktır. **Cell → Run All** ile tüm analizi baş
 
 ### ADIM 1: Terminal'i Aç
 
-**macOS:** `Command + Space` → "Terminal" yaz → Enter
+**macOS:** `Command + Space` → "Terminal" → Enter
 **Linux:** `Ctrl + Alt + T`
 
-### ADIM 2: Gereksinimleri Kontrol Et
-
-```bash
-# Python kontrolü
-python3 --version  # 3.8+ olmalı
-
-# Git kontrolü
-git --version
-
-# Python yoksa:
-# macOS: brew install python3
-# Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv
-# Fedora: sudo dnf install python3 python3-pip
-```
-
-### ADIM 3: Projeyi İndir
+### ADIM 2: Projeyi İndir
 
 ```bash
 cd ~/Desktop
@@ -172,7 +150,7 @@ git clone -b claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a \
 cd sibermakale
 ```
 
-### ADIM 4: Sanal Ortam ve Paketler
+### ADIM 3: Sanal Ortam ve Paketler
 
 ```bash
 # Sanal ortam oluştur
@@ -186,25 +164,17 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### ADIM 5: Veri Setini İndir
+### ADIM 4: Veri Setini Ekle
+
+1. UNSW-NB15 veri setini indirin (bkz. [Veri Setini İndirme](#-veri-setini-indirme))
+2. CSV dosyalarını `sibermakale/data/` klasörüne kopyalayın
 
 ```bash
-# Kaggle kurulumu
-pip install kaggle
-
-# Kaggle token yapılandır
-mkdir -p ~/.kaggle
-# kaggle.json dosyanızı ~/.kaggle/ klasörüne kopyalayın
-chmod 600 ~/.kaggle/kaggle.json
-
-# Veri setini indir
-kaggle datasets download -d mrwellsdavid/unsw-nb15
-unzip -q unsw-nb15.zip -d data/
-
-echo "✅ Veri seti hazır!"
+# Klasörü kontrol et
+ls -lh data/
 ```
 
-### ADIM 6: Notebook'u Başlat
+### ADIM 5: Notebook'u Başlat
 
 ```bash
 jupyter notebook unsw_nb15_analysis.ipynb
@@ -212,44 +182,67 @@ jupyter notebook unsw_nb15_analysis.ipynb
 
 ---
 
-## 📂 Projeyi İndirme ve Çalıştırma
+## 📥 Veri Setini İndirme
 
-### Klasör Yapısı
+### UNSW-NB15 Veri Setini Nereden İndiririm?
 
-İndirdikten sonra projeniz şöyle görünecek:
+**Seçenek 1: UNSW Resmi Web Sitesi (Önerilen)**
+
+https://research.unsw.edu.au/projects/unsw-nb15-dataset
+
+İndirmeniz gereken dosyalar:
+- `UNSW_NB15_training-set.csv`
+- `UNSW_NB15_testing-set.csv`
+
+**Seçenek 2: Kaggle (Manuel İndirme)**
+
+https://www.kaggle.com/datasets/mrwellsdavid/unsw-nb15
+
+1. Kaggle hesabınızla giriş yapın
+2. "Download" butonuna tıklayın
+3. ZIP dosyasını açın
+4. CSV dosyalarını `data/` klasörüne kopyalayın
+
+**Seçenek 3: Alternatif Kaynak (IEEE Dataport)**
+
+https://ieee-dataport.org/open-access/unsw-nb15-network-data-set
+
+### Dosya Yapısı
+
+İndirdikten sonra `data/` klasörünüz şöyle görünmeli:
+
+```
+data/
+├── UNSW_NB15_training-set.csv  (veya UNSW-NB15_1.csv)
+└── UNSW_NB15_testing-set.csv   (veya UNSW-NB15_2.csv)
+```
+
+**Not:** Dosya adları farklı olabilir. Kod otomatik olarak şu isimleri arar:
+- Training: `UNSW_NB15_training-set.csv`, `UNSW-NB15_1.csv`, `training-set.csv`
+- Testing: `UNSW_NB15_testing-set.csv`, `UNSW-NB15_2.csv`, `testing-set.csv`
+
+---
+
+## 📂 Proje Yapısı
 
 ```
 sibermakale/
-├── unsw_nb15_analysis.ipynb    # Ana analiz notebook'u
+├── unsw_nb15_analysis.ipynb    # Ana analiz notebook'u ⭐
 ├── UNSW_NB15_Colab.ipynb       # Colab versiyonu
-├── config.json                  # Yapılandırma dosyası
+├── config.json                  # Yapılandırma
 ├── utils.py                     # Yardımcı fonksiyonlar
 ├── requirements.txt             # Python bağımlılıkları
-├── data/                        # Veri seti buraya gelecek
-│   ├── UNSW-NB15_1.csv
-│   ├── UNSW-NB15_2.csv
-│   ├── UNSW-NB15_3.csv
-│   └── UNSW-NB15_4.csv
-├── artifacts/                   # Çıktılar buraya kaydedilecek
-│   ├── figs/                    # 40+ görselleştirme
-│   ├── tables/                  # 50+ tablo (CSV/XLSX)
-│   └── IEEE_Research_Paper_UNSW_NB15.docx  # Araştırma makalesi
+├── data/                        # Veri seti buraya 📥
+│   ├── UNSW_NB15_training-set.csv
+│   └── UNSW_NB15_testing-set.csv
+├── artifacts/                   # Çıktılar buraya 📊
+│   ├── figs/                    # 50+ görsel
+│   ├── tables/                  # 60+ tablo
+│   └── IEEE_Research_Paper_UNSW_NB15.docx
 ├── README.md
-├── KURULUM.md
 ├── COLAB_KOMUTLARI.md
 └── SISTEM_DOKUMANTASYONU.md
 ```
-
-### Tüm Hücreleri Çalıştırma
-
-**Jupyter Notebook'ta:**
-1. Menüden **Cell → Run All** seçin
-2. Ya da her hücreyi tek tek çalıştırın: `Shift + Enter`
-
-**Tahmini Süre:**
-- Google Colab (T4 GPU): ~45-60 dakika
-- Masaüstü (CPU): ~2-3 saat
-- Masaüstü (GPU): ~1-1.5 saat
 
 ---
 
@@ -259,62 +252,51 @@ sibermakale/
 
 Tüm çıktılar `artifacts/` klasöründe olacak:
 
-```bash
-# Klasör yapısını görüntüle
-ls -R artifacts/
+**Google Colab'da İndirme:**
 
-# Windows:
-dir /s artifacts\
+```python
+# Tüm çıktıları ZIP'le ve indir
+!zip -r unsw_nb15_outputs.zip artifacts/
+
+from google.colab import files
+files.download('unsw_nb15_outputs.zip')
+
+print("✅ Çıktılar indirildi!")
 ```
 
-### Ana Çıktılar
+**Masaüstünde Görüntüleme:**
 
-1. **IEEE Araştırma Makalesi**
-   - Dosya: `artifacts/IEEE_Research_Paper_UNSW_NB15.docx`
-   - Microsoft Word ile açın
-   - 15-20 sayfa, tam hazır makale!
-
-2. **Tablolar (50+)**
-   - Konum: `artifacts/tables/`
-   - Format: CSV ve XLSX
-   - Excel veya LibreOffice ile açın
-
-3. **Görseller (40+)**
-   - Konum: `artifacts/figs/`
-   - Format: PNG (yüksek çözünürlük)
-   - Herhangi bir görüntü görüntüleyici ile açın
-
-### Çıktıları Masaüstünüzde Görüntüleme
-
-**Windows:**
+Windows:
 ```cmd
 cd artifacts
 explorer .
 ```
 
-**macOS:**
+macOS:
 ```bash
 cd artifacts
 open .
 ```
 
-**Linux:**
+Linux:
 ```bash
 cd artifacts
-xdg-open .  # veya nautilus . / dolphin . / thunar .
+xdg-open .
 ```
 
-### Çıktıları ZIP Yapma
+### Ana Çıktılar
 
-**Windows (PowerShell):**
-```powershell
-Compress-Archive -Path artifacts -DestinationPath unsw_nb15_outputs.zip
-```
+1. **IEEE Araştırma Makalesi**
+   - `artifacts/IEEE_Research_Paper_UNSW_NB15.docx`
+   - 15-20 sayfa, yayın-hazır makale
 
-**macOS/Linux:**
-```bash
-zip -r unsw_nb15_outputs.zip artifacts/
-```
+2. **Tablolar (60+)**
+   - `artifacts/tables/*.csv`
+   - Excel veya LibreOffice ile açın
+
+3. **Görseller (50+)**
+   - `artifacts/figs/*.png`
+   - Yüksek çözünürlük PNG formatında
 
 ---
 
@@ -326,56 +308,64 @@ zip -r unsw_nb15_outputs.zip artifacts/
   https://github.com/sedahacettepetez-pixel/sibermakale.git
 %cd sibermakale
 !pip install -q -r requirements.txt
+!mkdir -p data
 # Sonra veri setini yükle ve Run All
 ```
 
-### Masaüstü Windows (10 dakika)
+### Windows (10 dakika)
 ```cmd
 git clone -b claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a https://github.com/sedahacettepetez-pixel/sibermakale.git
 cd sibermakale
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+REM Veri setini data\ klasörüne kopyala
 jupyter notebook unsw_nb15_analysis.ipynb
 ```
 
-### Masaüstü macOS/Linux (10 dakika)
+### macOS/Linux (10 dakika)
 ```bash
 git clone -b claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a https://github.com/sedahacettepetez-pixel/sibermakale.git
 cd sibermakale
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+# Veri setini data/ klasörüne kopyala
 jupyter notebook unsw_nb15_analysis.ipynb
 ```
 
 ---
 
+## ⏱️ Beklenen Süre
+
+- **Google Colab (GPU T4):** ~45-60 dakika
+- **Masaüstü (CPU):** ~2-3 saat
+- **Masaüstü (GPU):** ~1-1.5 saat
+
+---
+
 ## ❓ Sık Karşılaşılan Sorunlar
 
-### 1. "git: command not found"
-**Çözüm:** Git'i yükleyin: https://git-scm.com/downloads
+### 1. "FileNotFoundError: UNSW-NB15 dataset"
+**Çözüm:** Veri setini `data/` klasörüne ekleyin
+```bash
+ls -lh data/  # Dosyaların olduğunu kontrol et
+```
 
-### 2. "pip: command not found"
-**Çözüm:** Python'u PATH'e ekleyin veya `python -m pip` kullanın
-
-### 3. "ModuleNotFoundError"
-**Çözüm:**
+### 2. "ModuleNotFoundError"
+**Çözüm:** Paketleri yükleyin
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. "Kaggle API token not found"
-**Çözüm:**
-1. Kaggle.com → Account → Create API Token
-2. `kaggle.json` dosyasını `~/.kaggle/` klasörüne kopyala
+### 3. "Out of Memory" Hatası
+**Çözüm (Colab):** Runtime > Change runtime type > High-RAM
+**Çözüm (Masaüstü):** config.json'da sample_size'ı azaltın
 
-### 5. "Out of Memory" Hatası
-**Çözüm:**
-- Google Colab: Runtime → Change runtime type → High-RAM
-- Masaüstü: `config.json`'da `sample_size` değerini azalt
+### 4. "git: command not found"
+**Çözüm:** Git'i yükleyin: https://git-scm.com/downloads
 
-### 6. Branch bulunamadı hatası
+### 5. Branch bulunamadı
 **Çözüm:**
 ```bash
 git fetch --all
@@ -384,16 +374,23 @@ git checkout claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a
 
 ---
 
-## 📞 Destek
+## ✅ Başarı Kontrol Listesi
 
-Sorun yaşıyorsanız:
-1. `SISTEM_DOKUMANTASYONU.md` dosyasını okuyun
-2. `requirements.txt` dosyasındaki paketlerin kurulu olduğundan emin olun
-3. Python versiyonunu kontrol edin: `python --version` (3.8+ olmalı)
+- [ ] Git ve Python yüklü
+- [ ] Projeyi klonladım
+- [ ] Sanal ortam oluşturdum ve aktif ettim
+- [ ] requirements.txt paketlerini yükledim
+- [ ] UNSW-NB15 veri setini indirdim
+- [ ] CSV dosyalarını `data/` klasörüne koydum
+- [ ] Jupyter Notebook başlattım
+- [ ] Tüm hücreleri çalıştırdım (Run All)
+- [ ] Analiz tamamlandı
+- [ ] `artifacts/` klasöründe çıktıları gördüm
+- [ ] IEEE makalesini açtım
 
 ---
 
-## 📄 Lisans ve Referans
+## 📄 Proje Bilgileri
 
 **Proje:** UNSW-NB15 Network Intrusion Detection System
 **Branch:** `claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a`
@@ -404,25 +401,9 @@ Sorun yaşıyorsanız:
 ```
 Moustafa, N., & Slay, J. (2015). UNSW-NB15: a comprehensive data set for
 network intrusion detection systems (UNSW-NB15 network data set).
-In 2015 military communications and information systems conference (MilCIS)
-(pp. 1-6). IEEE.
+Military Communications and Information Systems Conference (MilCIS), 2015.
 ```
 
 ---
 
-## ✅ Başarı Kontrol Listesi
-
-- [ ] Git yüklü ve çalışıyor
-- [ ] Python 3.8+ yüklü
-- [ ] Projeyi doğru branch ile klonladım
-- [ ] Sanal ortam oluşturdum ve aktif ettim
-- [ ] requirements.txt paketlerini yükledim
-- [ ] UNSW-NB15 veri setini indirdim
-- [ ] Jupyter Notebook başlattım
-- [ ] Tüm hücreleri çalıştırdım
-- [ ] artifacts/ klasöründe çıktıları gördüm
-- [ ] IEEE_Research_Paper_UNSW_NB15.docx dosyasını açtım
-
----
-
-**🎉 Başarılar! Projeniz hazır ve çalışıyor!**
+**🎉 Başarılar! Projeniz hazır!**
