@@ -482,5 +482,282 @@ def timer(func):
     return wrapper
 
 
+def plot_numeric_distributions(df: pd.DataFrame, numeric_cols: List[str],
+                               output_dir: str, n_cols: int = 4):
+    """Plot histograms for numeric features."""
+    n_features = len(numeric_cols)
+    n_rows = (n_features + n_cols - 1) // n_cols
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4*n_cols, 3*n_rows))
+    axes = axes.flatten() if n_features > 1 else [axes]
+
+    for idx, col in enumerate(numeric_cols[:len(axes)]):
+        if col in df.columns:
+            df[col].hist(bins=50, ax=axes[idx], edgecolor='black')
+            axes[idx].set_title(f'{col}', fontsize=10)
+            axes[idx].set_xlabel('Value')
+            axes[idx].set_ylabel('Frequency')
+
+    # Hide extra subplots
+    for idx in range(n_features, len(axes)):
+        axes[idx].axis('off')
+
+    plt.tight_layout()
+    output_path = os.path.join(output_dir, 'numeric_distributions.png')
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Numeric distributions saved to {output_path}")
+
+
+def plot_correlation_heatmap(df: pd.DataFrame, numeric_cols: List[str], output_path: str):
+    """Plot correlation heatmap."""
+    corr_df = df[numeric_cols].corr()
+
+    plt.figure(figsize=(14, 12))
+    sns.heatmap(corr_df, cmap='coolwarm', center=0,
+                annot=False, square=True, linewidths=0.5)
+    plt.title('Feature Correlation Heatmap', fontsize=14)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Correlation heatmap saved to {output_path}")
+
+    # Save correlation table
+    corr_table_path = output_path.replace('.png', '.csv')
+    corr_df.to_csv(corr_table_path)
+    print(f"✓ Correlation table saved to {corr_table_path}")
+    return corr_df
+
+
+def plot_feature_importance_comparison(fi_dicts: Dict[str, pd.DataFrame],
+                                       output_path: str, top_n: int = 20):
+    """Compare feature importance across models."""
+    fig, axes = plt.subplots(1, len(fi_dicts), figsize=(6*len(fi_dicts), 8))
+    if len(fi_dicts) == 1:
+        axes = [axes]
+
+    for idx, (model_name, fi_df) in enumerate(fi_dicts.items()):
+        top_fi = fi_df.nlargest(top_n, fi_df.columns[1])
+        axes[idx].barh(range(len(top_fi)), top_fi.iloc[:, 1])
+        axes[idx].set_yticks(range(len(top_fi)))
+        axes[idx].set_yticklabels(top_fi['feature'], fontsize=8)
+        axes[idx].set_xlabel('Importance')
+        axes[idx].set_title(f'{model_name} - Top {top_n} Features')
+        axes[idx].invert_yaxis()
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Feature importance comparison saved to {output_path}")
+
+
+def plot_per_class_metrics(metrics_df: pd.DataFrame, output_path: str,
+                            metric_name: str = 'f1-score'):
+    """Plot per-class metrics as bar chart."""
+    if metric_name not in metrics_df.columns:
+        print(f"⚠ {metric_name} not found in metrics")
+        return
+
+    # Filter out avg rows
+    plot_df = metrics_df[~metrics_df.index.str.contains('avg|accuracy', na=False)].copy()
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(range(len(plot_df)), plot_df[metric_name])
+    plt.xticks(range(len(plot_df)), plot_df.index, rotation=45, ha='right')
+    plt.ylabel(metric_name.title())
+    plt.xlabel('Class')
+    plt.title(f'Per-Class {metric_name.title()}')
+    plt.grid(axis='y', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Per-class metrics plot saved to {output_path}")
+
+
+def plot_training_time_comparison(models_df: pd.DataFrame, output_path: str):
+    """Plot training time comparison."""
+    plt.figure(figsize=(10, 6))
+
+    models = models_df['model'].values
+    times = models_df['train_time_sec_mean'].values
+
+    plt.bar(range(len(models)), times, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'][:len(models)])
+    plt.xticks(range(len(models)), models)
+    plt.ylabel('Training Time (seconds)')
+    plt.xlabel('Model')
+    plt.title('Average Training Time Comparison (5-Fold CV)')
+    plt.grid(axis='y', alpha=0.3)
+
+    # Add value labels
+    for i, v in enumerate(times):
+        plt.text(i, v + max(times)*0.02, f'{v:.1f}s', ha='center', va='bottom')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Training time comparison saved to {output_path}")
+
+
+def plot_model_comparison_radar(models_df: pd.DataFrame, output_path: str):
+    """Plot radar chart for model comparison."""
+    from math import pi
+
+    metrics = ['macro_f1_mean', 'ovr_pr_auc_mean', 'accuracy_mean']
+    labels = ['Macro F1', 'PR-AUC', 'Accuracy']
+
+    angles = [n / float(len(metrics)) * 2 * pi for n in range(len(metrics))]
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
+
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+
+    for idx, row in models_df.iterrows():
+        values = [row[m] for m in metrics]
+        values += values[:1]
+        ax.plot(angles, values, 'o-', linewidth=2, label=row['model'], color=colors[idx % len(colors)])
+        ax.fill(angles, values, alpha=0.15, color=colors[idx % len(colors)])
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels)
+    ax.set_ylim(0, 1)
+    ax.set_title('Model Performance Comparison', y=1.08, fontsize=14)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+    ax.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Radar chart saved to {output_path}")
+
+
+def plot_class_distribution_per_fold(df: pd.DataFrame, target_col: str,
+                                      output_path: str, n_splits: int = 5):
+    """Plot class distribution across CV folds."""
+    fig, axes = plt.subplots(1, n_splits, figsize=(4*n_splits, 4))
+    if n_splits == 1:
+        axes = [axes]
+
+    for fold in range(n_splits):
+        fold_df = df[df['cv_fold'] == fold]
+        fold_df[target_col].value_counts().plot(kind='bar', ax=axes[fold])
+        axes[fold].set_title(f'Fold {fold}')
+        axes[fold].set_xlabel('Class')
+        axes[fold].set_ylabel('Count')
+        axes[fold].tick_params(axis='x', rotation=45)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Class distribution per fold saved to {output_path}")
+
+
+def plot_categorical_distribution(df: pd.DataFrame, cat_col: str, output_path: str, top_n: int = 15):
+    """Plot distribution of categorical feature."""
+    value_counts = df[cat_col].value_counts().head(top_n)
+
+    plt.figure(figsize=(10, 6))
+    value_counts.plot(kind='barh')
+    plt.xlabel('Count')
+    plt.ylabel(cat_col)
+    plt.title(f'{cat_col} Distribution (Top {top_n})')
+    plt.grid(axis='x', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Categorical distribution saved to {output_path}")
+
+
+def plot_metric_progression(cv_scores_df: pd.DataFrame, metric_col: str,
+                             output_path: str, model_name: str = 'Model'):
+    """Plot metric progression across folds."""
+    plt.figure(figsize=(10, 6))
+
+    folds = cv_scores_df['fold'].values
+    scores = cv_scores_df[metric_col].values
+
+    plt.plot(folds, scores, 'o-', linewidth=2, markersize=8)
+    plt.axhline(y=scores.mean(), color='r', linestyle='--',
+                label=f'Mean: {scores.mean():.4f}')
+    plt.fill_between(folds, scores.mean() - scores.std(),
+                     scores.mean() + scores.std(), alpha=0.2)
+
+    plt.xlabel('Fold')
+    plt.ylabel(metric_col.replace('_', ' ').title())
+    plt.title(f'{model_name} - {metric_col.replace("_", " ").title()} Across Folds')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Metric progression saved to {output_path}")
+
+
+def create_per_class_metrics_table(y_true: np.ndarray, y_pred: np.ndarray,
+                                   y_proba: np.ndarray, class_names: List[str],
+                                   output_path: str, fold: int = None):
+    """Create detailed per-class metrics table."""
+    from sklearn.metrics import classification_report, precision_recall_fscore_support
+
+    # Get per-class metrics
+    precision, recall, f1, support = precision_recall_fscore_support(
+        y_true, y_pred, average=None, zero_division=0
+    )
+
+    # Binarize for AUC calculations
+    y_true_bin = label_binarize(y_true, classes=range(len(class_names)))
+
+    metrics_data = []
+    for i, class_name in enumerate(class_names):
+        row = {
+            'class': class_name,
+            'precision': precision[i],
+            'recall': recall[i],
+            'f1_score': f1[i],
+            'support': support[i]
+        }
+
+        # Add PR-AUC if available
+        if len(np.unique(y_true_bin[:, i])) > 1:
+            row['pr_auc'] = average_precision_score(y_true_bin[:, i], y_proba[:, i])
+        else:
+            row['pr_auc'] = 0.0
+
+        if fold is not None:
+            row['fold'] = fold
+
+        metrics_data.append(row)
+
+    metrics_df = pd.DataFrame(metrics_data)
+    metrics_df.to_csv(output_path, index=False)
+    print(f"✓ Per-class metrics table saved to {output_path}")
+    return metrics_df
+
+
+def plot_boxplot_comparison(data_dict: Dict[str, List[float]],
+                             output_path: str, title: str = 'Metric Comparison',
+                             ylabel: str = 'Score'):
+    """Plot boxplot comparison across models."""
+    plt.figure(figsize=(10, 6))
+
+    positions = range(1, len(data_dict) + 1)
+    bp = plt.boxplot(data_dict.values(), positions=positions, patch_artist=True,
+                     labels=data_dict.keys())
+
+    # Color the boxes
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+    for patch, color in zip(bp['boxes'], colors[:len(bp['boxes'])]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.6)
+
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(axis='y', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Boxplot comparison saved to {output_path}")
+
+
 if __name__ == "__main__":
     print("Utility functions module loaded successfully")
