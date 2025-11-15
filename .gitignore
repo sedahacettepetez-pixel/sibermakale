@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Data files (optional - comment out if you want to include data)
+data/*.csv
+data/*.parquet
+data/*.zip
+
+# Artifacts (optional - comment out to include results)
+artifacts/tables/*.csv
+artifacts/figs/*.png
+artifacts/logs/*.log
+artifacts/models/*.pkl
+artifacts/models/*.joblib
+artifacts/processed/*.parquet
+
+# Keep directory structure but ignore contents
+!artifacts/tables/.gitkeep
+!artifacts/figs/.gitkeep
+!artifacts/logs/.gitkeep
+!artifacts/models/.gitkeep
+!artifacts/processed/.gitkeep
+!data/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kaggle
+kaggle.json
+
+# Temporary files
+*.tmp
+*.bak
+*.log
