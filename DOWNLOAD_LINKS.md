@@ -1,6 +1,46 @@
 # 📥 UNSW-NB15 IDS Project - İndirme Linkleri
 
-Son Güncelleme: 2025-11-15
+Son Güncelleme: 2025-11-15 23:30:00 UTC | **Commit:** `feeb6b6`
+
+---
+
+## ⚠️ ESKİ VERSİYON GÖRÜYORSAN? (ÖNEMLİ!)
+
+GitHub ve Colab bazen eski versiyonları cache'ler. **Eğer hala 94 cell görmüyorsan veya "LATEST VERSION - FORCE UPDATED" yazısı yoksa:**
+
+### 🔄 Cache Temizleme Çözümleri:
+
+**1. Colab için (EN KOLAY):**
+```
+Direkt bu linke tıkla (cache bypass):
+https://colab.research.google.com/github/sedahacettepetez-pixel/sibermakale/blob/claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a/unsw_nb15_analysis.ipynb?flush_cache=true
+```
+
+**2. GitHub için:**
+- Tarayıcıda **CTRL + F5** (hard refresh)
+- Veya tarayıcı cache'ini tamamen temizle
+- Veya gizli mod/incognito kullan
+
+**3. ZIP ile direkt indir (GARANTILI):**
+```
+https://github.com/sedahacettepetez-pixel/sibermakale/archive/refs/heads/claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a.zip
+```
+- ZIP'i indir → çıkar → jupyter notebook başlat
+
+**4. Git ile fresh clone (Desktop için):**
+```bash
+# Eski klasörü sil
+rm -rf sibermakale
+
+# Yeniden clone et
+git clone -b claude/unsw-nb15-setup-config-01DEmKoC2eHKvoYkAuYHsr8a https://github.com/sedahacettepetez-pixel/sibermakale.git
+```
+
+**✅ Doğru Versiyonu Göründüğünü Nasıl Anlarsın?**
+- Cell 0'da **"🔥 LATEST VERSION - FORCE UPDATED 🔥"** yazısı olmalı
+- **94 cell** olmalı (eski versiyonda 51 cell vardı)
+- **Version: 2.1** yazmalı
+- **Last Updated: 2025-11-15 23:23:58 UTC** tarihi olmalı
 
 ---
 
@@ -289,6 +329,6 @@ Her şey hazır! Notebook'u çalıştır ve Q1 makale sonuçlarını al!
 
 ---
 
-**Last Updated:** 2025-11-15
-**Version:** 1.0 (Final - Production Ready)
-**Git Commit:** 3e0cbc3
+**Last Updated:** 2025-11-15 23:30:00 UTC
+**Version:** 2.1 (Force Updated - Cache Cleared)
+**Git Commit:** feeb6b6
