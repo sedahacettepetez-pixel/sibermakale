@@ -1,0 +1,211 @@
+{
+  "project": {
+    "name": "UNSW-NB15 Attack Classification",
+    "version": "1.0.0",
+    "seed": 42,
+    "description": "Comprehensive ML pipeline for UNSW-NB15 network intrusion detection"
+  },
+  "data": {
+    "train_path": "data/UNSW_NB15_training-set.csv",
+    "test_path": "data/UNSW_NB15_testing-set.csv",
+    "processed_path": "artifacts/processed/processed.parquet"
+  },
+  "targets": {
+    "binary": "label",
+    "multi": "attack_cat"
+  },
+  "features": {
+    "categorical": ["proto", "service", "state"],
+    "numeric": [
+      "dur", "sbytes", "dbytes", "spkts", "dpkts",
+      "sload", "dload", "sloss", "dloss",
+      "sinpkt", "dinpkt", "sjit", "djit",
+      "swin", "dwin", "stcpb", "dtcpb",
+      "smeansz", "dmeansz", "trans_depth",
+      "res_bdy_len", "ct_srv_src", "ct_state_ttl",
+      "ct_dst_ltm", "ct_src_ltm", "ct_src_dport_ltm",
+      "ct_dst_sport_ltm", "ct_dst_src_ltm",
+      "is_ftp_login", "ct_ftp_cmd", "ct_flw_http_mthd", "ct_src_ltm",
+      "is_sm_ips_ports"
+    ],
+    "id_time": ["srcip", "sport", "dstip", "dsport", "stime", "ltime"],
+    "engineered": {
+      "bytes_total": "sbytes + dbytes",
+      "bytes_ratio_sd": "sbytes / (dbytes + 1)",
+      "bytes_per_sec": "bytes_total / max(dur, 1e-6)",
+      "pkts_total": "spkts + dpkts",
+      "pkts_per_sec": "pkts_total / max(dur, 1e-6)",
+      "sport_bucket": "categorize port ranges",
+      "dsport_bucket": "categorize port ranges",
+      "proto_service": "proto + '_' + service"
+    }
+  },
+  "preprocessing": {
+    "handle_missing": {
+      "numeric": "median",
+      "categorical": "_missing_",
+      "service_dash": "_missing_"
+    },
+    "scaling": {
+      "method": "RobustScaler",
+      "numeric_only": true
+    },
+    "encoding": {
+      "method": "OneHotEncoder",
+      "handle_unknown": "ignore"
+    }
+  },
+  "cv": {
+    "n_splits": 5,
+    "strategy": "host",
+    "group_key_format": "{srcip}_{dstip}",
+    "alternative_strategy": "time"
+  },
+  "imbalance": {
+    "use_smote_nc": true,
+    "smote_k_neighbors": 5,
+    "class_weight": "balanced",
+    "focal_loss": {
+      "enabled": true,
+      "gamma": 2.0,
+      "alpha": null
+    }
+  },
+  "models": {
+    "lightgbm": {
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "max_depth": -1,
+      "min_child_samples": 20,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "reg_alpha": 0.1,
+      "reg_lambda": 0.1,
+      "class_weight": "balanced",
+      "random_state": 42,
+      "n_jobs": -1,
+      "verbose": -1
+    },
+    "xgboost": {
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "max_depth": 6,
+      "min_child_weight": 1,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "gamma": 0,
+      "reg_alpha": 0.1,
+      "reg_lambda": 1.0,
+      "random_state": 42,
+      "n_jobs": -1,
+      "tree_method": "hist"
+    },
+    "catboost": {
+      "iterations": 500,
+      "learning_rate": 0.05,
+      "depth": 6,
+      "l2_leaf_reg": 3,
+      "random_seed": 42,
+      "verbose": false,
+      "allow_writing_files": false,
+      "task_type": "CPU"
+    },
+    "tabtransformer": {
+      "d_model": 128,
+      "nhead": 8,
+      "num_layers": 4,
+      "dim_feedforward": 512,
+      "dropout": 0.2,
+      "learning_rate": 0.001,
+      "batch_size": 256,
+      "epochs": 50,
+      "early_stopping_patience": 10,
+      "optimizer": "AdamW",
+      "weight_decay": 0.01,
+      "focal_loss_gamma": 2.0
+    },
+    "ensemble": {
+      "method": "soft_vote",
+      "members": ["lightgbm", "xgboost", "tabtransformer"],
+      "weights": null,
+      "stacking_meta_learner": "lightgbm"
+    }
+  },
+  "hpo": {
+    "enabled": false,
+    "n_trials": 50,
+    "timeout": 3600,
+    "sampler": "TPESampler",
+    "pruner": "MedianPruner",
+    "optimization_metric": "macro_f1",
+    "search_spaces": {
+      "lightgbm": {
+        "num_leaves": [15, 127],
+        "max_depth": [3, 12],
+        "learning_rate": [0.01, 0.3],
+        "feature_fraction": [0.5, 1.0],
+        "lambda_l1": [0.0, 10.0],
+        "lambda_l2": [0.0, 10.0]
+      },
+      "tabtransformer": {
+        "d_model": [64, 256],
+        "nhead": [4, 16],
+        "num_layers": [2, 6],
+        "dropout": [0.1, 0.5],
+        "learning_rate": [0.0001, 0.01]
+      }
+    }
+  },
+  "calibration": {
+    "enabled": true,
+    "method": "isotonic",
+    "cv_split_ratio": 0.2,
+    "compute_threshold": true,
+    "per_class_threshold": false
+  },
+  "metrics": {
+    "primary": "macro_f1",
+    "additional": [
+      "precision_macro",
+      "recall_macro",
+      "accuracy",
+      "ovr_pr_auc",
+      "weighted_f1"
+    ]
+  },
+  "ablation": {
+    "enabled": false,
+    "experiments": [
+      {"name": "no_smote", "use_smote_nc": false},
+      {"name": "no_focal", "focal_loss": false},
+      {"name": "no_calibration", "calibration_enabled": false},
+      {"name": "tabtx_small", "d_model": 64, "num_layers": 2},
+      {"name": "tabtx_large", "d_model": 256, "num_layers": 6}
+    ]
+  },
+  "federated_learning": {
+    "enabled": false,
+    "n_clients": 5,
+    "n_rounds": 20,
+    "client_fraction": 1.0,
+    "aggregation": "FedAvg"
+  },
+  "cross_dataset": {
+    "enabled": false,
+    "datasets": ["CIC-IDS2017"]
+  },
+  "output": {
+    "artifacts_dir": "artifacts",
+    "tables_dir": "artifacts/tables",
+    "figs_dir": "artifacts/figs",
+    "logs_dir": "artifacts/logs",
+    "models_dir": "artifacts/models",
+    "report_dir": "artifacts/report",
+    "save_predictions": true,
+    "save_probabilities": true,
+    "save_feature_importance": true,
+    "figure_format": "png",
+    "figure_dpi": 300
+  }
+}
